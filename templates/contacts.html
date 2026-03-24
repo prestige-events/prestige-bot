@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% set active_page = "contacts" %}
+
+{% block content %}
+<h1>Contatti ({{ contacts|length }})</h1>
+
+<div class="card">
+    {% if contacts %}
+    <table>
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Cognome</th>
+                <th>Tags</th>
+                <th>Data</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in contacts %}
+            <tr>
+                <td>{{ c.first_name or '-' }}</td>
+                <td>{{ c.last_name or '-' }}</td>
+                <td>
+                    {% if c.tags %}
+                        {% for tag in c.tags.split(',') %}
+                        <span class="tag">{{ tag }}</span>
+                        {% endfor %}
+                    {% else %}
+                        <span style="color:#666;">-</span>
+                    {% endif %}
+                </td>
+                <td style="color:#666; font-size:12px;">{{ c.created_at }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:#666; padding:20px 0; text-align:center;">
+        Nessun contatto ancora. I contatti appariranno quando qualcuno scriverà alla pagina.
+    </p>
+    {% endif %}
+</div>
+{% endblock %}

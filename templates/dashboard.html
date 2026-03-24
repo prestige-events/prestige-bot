@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% set active_page = "dashboard" %}
+
+{% block content %}
+<h1>Dashboard</h1>
+
+<div class="stats">
+    <div class="stat-card">
+        <div class="number">{{ total_contacts }}</div>
+        <div class="label">Contatti Totali</div>
+    </div>
+    <div class="stat-card">
+        <div class="number">{{ total_tournaments }}</div>
+        <div class="label">Tornei Attivi</div>
+    </div>
+</div>
+
+<!-- Send message section -->
+<div class="card">
+    <h2>Invia Messaggio</h2>
+    <form method="POST" action="/send-message">
+        <div class="form-grid">
+            <label>
+                Tag destinatari
+                <select name="tag">
+                    <option value="notifica_tutti_tornei">Tutti gli iscritti alle notifiche</option>
+                    <option value="notifica_eventi_speciali">Solo eventi speciali</option>
+                    <option value="nuovo_giocatore">Nuovi giocatori</option>
+                    <option value="nuovo_contatto">Nuovi contatti</option>
+                </select>
+            </label>
+            <label>
+                &nbsp;
+                <button type="submit" class="btn" style="width:100%; margin-top:5px;">Invia</button>
+            </label>
+        </div>
+        <label>
+            Messaggio (usa {first_name} per il nome)
+            <textarea name="message" rows="4" placeholder="Ciao {first_name}, ..."></textarea>
+        </label>
+    </form>
+</div>
+
+<!-- Recent tournaments -->
+<div class="card">
+    <h2>Tornei Attivi</h2>
+    {% if tournaments %}
+    <table>
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Data</th>
+                <th>Buy-in</th>
+                <th>Keyword</th>
+                <th>Azione</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in tournaments %}
+            <tr>
+                <td>{{ t.name }}</td>
+                <td>{{ t.date }} {{ t.time }}</td>
+                <td>{{ t.buyin }}</td>
+                <td><span class="tag">{{ t.keyword }}</span></td>
+                <td><a href="/tournaments/{{ t.id }}" class="btn btn-secondary" style="padding:5px 12px; font-size:12px;">Dettagli</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:#666; padding:20px 0;">Nessun torneo attivo. <a href="/tournaments/new" style="color:#c9a84c;">Creane uno</a></p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% set active_page = "tournaments" %}
+
+{% block content %}
+<h1>{{ tournament.name }}</h1>
+
+<div class="stats">
+    <div class="stat-card">
+        <div class="number">{{ tournament.date }}</div>
+        <div class="label">Data</div>
+    </div>
+    <div class="stat-card">
+        <div class="number">{{ tournament.time }}</div>
+        <div class="label">Orario</div>
+    </div>
+    <div class="stat-card">
+        <div class="number">{{ tournament.buyin or '-' }}</div>
+        <div class="label">Buy-in</div>
+    </div>
+    <div class="stat-card">
+        <div class="number">{{ registrations|length }}</div>
+        <div class="label">Iscrizioni</div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Dettagli</h2>
+    <table>
+        <tr><th style="width:150px;">Garantito</th><td>{{ tournament.guaranteed or '-' }}</td></tr>
+        <tr><th>Re-entry</th><td>{{ tournament.reentry or '-' }}</td></tr>
+        <tr><th>Blinds</th><td>{{ tournament.blinds or '-' }} minuti</td></tr>
+        <tr><th>Keyword</th><td><span class="tag">{{ tournament.keyword }}</span></td></tr>
+        <tr><th>Descrizione</th><td>{{ tournament.description or '-' }}</td></tr>
+    </table>
+</div>
+
+<div class="card">
+    <h2>Iscrizioni ({{ registrations|length }})</h2>
+    {% if registrations %}
+    <table>
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Cognome</th>
+                <th>Stato</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in registrations %}
+            <tr>
+                <td>{{ r.first_name or '-' }}</td>
+                <td>{{ r.last_name or '-' }}</td>
+                <td>
+                    <span class="status-{{ r.status }}">
+                        {% if r.status == 'registered' %}Iscritto
+                        {% elif r.status == 'interested' %}Interessato
+                        {% elif r.status == 'undecided' %}Indeciso
+                        {% endif %}
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:#666; padding:20px 0;">Nessuna iscrizione ancora.</p>
+    {% endif %}
+</div>
+{% endblock %}

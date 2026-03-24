@@ -1,0 +1,4 @@
+.env
+prestige.db
+__pycache__/
+*.pyc

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% set active_page = "tournaments" %}
+
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+    <h1>Tornei</h1>
+    <a href="/tournaments/new" class="btn">+ Nuovo Torneo</a>
+</div>
+
+{% if tournaments %}
+<div class="card">
+    <table>
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Data</th>
+                <th>Orario</th>
+                <th>Buy-in</th>
+                <th>Garantito</th>
+                <th>Keyword</th>
+                <th>Azione</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in tournaments %}
+            <tr>
+                <td><strong>{{ t.name }}</strong></td>
+                <td>{{ t.date }}</td>
+                <td>{{ t.time }}</td>
+                <td>{{ t.buyin }}</td>
+                <td>{{ t.guaranteed or '-' }}</td>
+                <td><span class="tag">{{ t.keyword }}</span></td>
+                <td><a href="/tournaments/{{ t.id }}" class="btn btn-secondary" style="padding:5px 12px; font-size:12px;">Dettagli</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="card" style="text-align:center; padding:50px;">
+    <p style="color:#666; font-size:18px; margin-bottom:20px;">Nessun torneo attivo</p>
+    <a href="/tournaments/new" class="btn">Crea il primo torneo</a>
+</div>
+{% endif %}
+{% endblock %}
