@@ -21,6 +21,10 @@ from datetime import datetime, timedelta
 app = Flask(__name__)
 app.secret_key = os.environ.get("APP_SECRET", "prestige-secret-key")
 
+# Initialize database and scheduler at import time (works with gunicorn)
+init_db()
+start_scheduler()
+
 VERIFY_TOKEN = os.environ.get("VERIFY_TOKEN", "prestige_events_bot_2024")
 APP_SECRET = os.environ.get("APP_SECRET", "")
 
@@ -204,7 +208,5 @@ def health():
 # --- Startup ---
 
 if __name__ == "__main__":
-    init_db()
-    start_scheduler()
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
