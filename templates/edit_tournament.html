@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% set active_page = "tournaments" %}
+
+{% block content %}
+<h1>Modifica Torneo</h1>
+
+<div class="card">
+    <form method="POST">
+        <div class="form-grid">
+            <label>
+                Nome torneo *
+                <input type="text" name="name" required value="{{ tournament.name }}">
+            </label>
+            <label>
+                Keyword per Messenger *
+                <input type="text" name="keyword" required value="{{ tournament.keyword }}" style="text-transform:uppercase;">
+            </label>
+            <label>
+                Data *
+                <input type="date" name="date" required value="{{ tournament.date }}">
+            </label>
+            <label>
+                Orario *
+                <input type="time" name="time" required value="{{ tournament.time }}">
+            </label>
+            <label>
+                Buy-in
+                <input type="text" name="buyin" value="{{ tournament.buyin or '' }}">
+            </label>
+            <label>
+                Re-entry
+                <input type="text" name="reentry" value="{{ tournament.reentry or '' }}">
+            </label>
+            <label>
+                Garantito
+                <input type="text" name="guaranteed" value="{{ tournament.guaranteed or '' }}">
+            </label>
+            <label>
+                Blinds (minuti)
+                <input type="text" name="blinds" value="{{ tournament.blinds or '' }}">
+            </label>
+        </div>
+        <label>
+            Descrizione
+            <textarea name="description" rows="3">{{ tournament.description or '' }}</textarea>
+        </label>
+
+        <div style="margin-top:20px; display:flex; gap:10px;">
+            <button type="submit" class="btn">Salva Modifiche</button>
+            <a href="/tournaments/{{ tournament.id }}" class="btn btn-secondary">Annulla</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

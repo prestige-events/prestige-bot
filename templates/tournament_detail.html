@@ -2,7 +2,15 @@
 {% set active_page = "tournaments" %}
 
 {% block content %}
-<h1>{{ tournament.name }}</h1>
+<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+    <h1 style="margin:0;">{{ tournament.name }}</h1>
+    <div style="display:flex; gap:10px;">
+        <a href="/tournaments/{{ tournament.id }}/edit" class="btn">Modifica</a>
+        <form method="POST" action="/tournaments/{{ tournament.id }}/delete" onsubmit="return confirm('Sei sicuro di voler eliminare questo torneo?');" style="margin:0;">
+            <button type="submit" class="btn" style="background:#dc3545;">Elimina</button>
+        </form>
+    </div>
+</div>
 
 <div class="stats">
     <div class="stat-card">

@@ -12,6 +12,8 @@ from database import (
     get_contacts_by_tag,
     create_scheduled_message,
     add_tag,
+    update_tournament,
+    delete_tournament,
 )
 from bot_logic import handle_message, handle_postback
 from messenger import send_message
@@ -170,6 +172,41 @@ def tournament_detail(tournament_id):
         tournament=tournament,
         registrations=registrations,
     )
+
+
+@app.route("/tournaments/<int:tournament_id>/edit", methods=["GET", "POST"])
+def edit_tournament(tournament_id):
+    """Edit an existing tournament."""
+    tournament = get_tournament_by_id(tournament_id)
+    if not tournament:
+        flash("Torneo non trovato.", "error")
+        return redirect(url_for("tournaments_page"))
+
+    if request.method == "POST":
+        update_tournament(
+            tournament_id,
+            name=request.form["name"],
+            date=request.form["date"],
+            time=request.form["time"],
+            buyin=request.form.get("buyin", ""),
+            reentry=request.form.get("reentry", ""),
+            guaranteed=request.form.get("guaranteed", ""),
+            blinds=request.form.get("blinds", ""),
+            description=request.form.get("description", ""),
+            keyword=request.form.get("keyword", ""),
+        )
+        flash("Torneo aggiornato con successo!", "success")
+        return redirect(url_for("tournament_detail", tournament_id=tournament_id))
+
+    return render_template("edit_tournament.html", tournament=tournament)
+
+
+@app.route("/tournaments/<int:tournament_id>/delete", methods=["POST"])
+def delete_tournament_route(tournament_id):
+    """Delete a tournament."""
+    delete_tournament(tournament_id)
+    flash("Torneo eliminato.", "success")
+    return redirect(url_for("tournaments_page"))
 
 
 @app.route("/contacts")

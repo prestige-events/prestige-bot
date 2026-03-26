@@ -227,6 +227,28 @@ def get_tournament_by_id(tournament_id):
     return tournament
 
 
+def update_tournament(tournament_id, name, date, time, buyin, reentry, guaranteed, blinds, description, keyword):
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("""
+        UPDATE tournaments SET name=?, date=?, time=?, buyin=?, reentry=?,
+        guaranteed=?, blinds=?, description=?, keyword=?
+        WHERE id=?
+    """, (name, date, time, buyin, reentry, guaranteed, blinds, description, keyword.upper(), tournament_id))
+    conn.commit()
+    conn.close()
+
+
+def delete_tournament(tournament_id):
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("DELETE FROM registrations WHERE tournament_id = ?", (tournament_id,))
+    c.execute("DELETE FROM scheduled_messages WHERE tournament_id = ?", (tournament_id,))
+    c.execute("DELETE FROM tournaments WHERE id = ?", (tournament_id,))
+    conn.commit()
+    conn.close()
+
+
 def get_tournament_by_keyword(keyword):
     conn = get_db()
     c = conn.cursor()
