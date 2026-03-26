@@ -189,7 +189,8 @@ def handle_registration(sender_psid, contact_id, first_name, tournament_id):
     msg = (
         f"Perfetto {first_name}!\n\n"
         "Per confermare il tuo posto:\n"
-        "📞 Chiama/WhatsApp il numero della room\n\n"
+        "📞 Chiama: 393 989 7538\n"
+        "📱 WhatsApp: wa.me/393939897538\n\n"
         "Ti invieremo un promemoria 24h prima del torneo.\n\n"
         "A presto! 🎯"
     )
