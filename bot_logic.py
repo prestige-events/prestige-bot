@@ -34,6 +34,18 @@ def handle_message(sender_psid, message):
         handle_tournament_keyword(sender_psid, contact_id, first_name, tournament)
         return
 
+    if keyword == "INFO":
+        msg = (
+            f"Ciao {first_name}!\n\n"
+            "Per qualsiasi informazione puoi contattarci:\n\n"
+            "📞 393 989 7539\n"
+            "📱 WhatsApp: wa.me/393939897539\n\n"
+            "Ti rispondiamo il prima possibile!"
+        )
+        send_message(sender_psid, msg)
+        log_message(contact_id, "outgoing", msg)
+        return
+
     # Check for common keywords
     tags = get_tags_for_contact(contact_id)
 
