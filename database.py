@@ -1,23 +1,26 @@
-import sqlite3
 import os
 from datetime import datetime
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "prestige.db")
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn = psycopg2.connect(DATABASE_URL)
     return conn
 
 
 def init_db():
+    if not DATABASE_URL:
+        print("DATABASE_URL non configurato, skip init_db")
+        return
     conn = get_db()
     c = conn.cursor()
 
     c.execute("""
         CREATE TABLE IF NOT EXISTS contacts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             psid TEXT UNIQUE NOT NULL,
             first_name TEXT,
             last_name TEXT,
@@ -27,18 +30,17 @@ def init_db():
 
     c.execute("""
         CREATE TABLE IF NOT EXISTS tags (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            contact_id INTEGER NOT NULL,
+            id SERIAL PRIMARY KEY,
+            contact_id INTEGER NOT NULL REFERENCES contacts(id),
             tag TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (contact_id) REFERENCES contacts(id),
             UNIQUE(contact_id, tag)
         )
     """)
 
     c.execute("""
         CREATE TABLE IF NOT EXISTS tournaments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,
             date TEXT NOT NULL,
             time TEXT NOT NULL,
@@ -55,38 +57,34 @@ def init_db():
 
     c.execute("""
         CREATE TABLE IF NOT EXISTS registrations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            contact_id INTEGER NOT NULL,
-            tournament_id INTEGER NOT NULL,
+            id SERIAL PRIMARY KEY,
+            contact_id INTEGER NOT NULL REFERENCES contacts(id),
+            tournament_id INTEGER NOT NULL REFERENCES tournaments(id),
             status TEXT DEFAULT 'interested',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (contact_id) REFERENCES contacts(id),
-            FOREIGN KEY (tournament_id) REFERENCES tournaments(id),
             UNIQUE(contact_id, tournament_id)
         )
     """)
 
     c.execute("""
         CREATE TABLE IF NOT EXISTS messages_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            contact_id INTEGER,
+            id SERIAL PRIMARY KEY,
+            contact_id INTEGER REFERENCES contacts(id),
             direction TEXT NOT NULL,
             message_text TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (contact_id) REFERENCES contacts(id)
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
 
     c.execute("""
         CREATE TABLE IF NOT EXISTS scheduled_messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            tournament_id INTEGER NOT NULL,
+            id SERIAL PRIMARY KEY,
+            tournament_id INTEGER NOT NULL REFERENCES tournaments(id),
             tag TEXT NOT NULL,
             message_text TEXT NOT NULL,
             send_at TIMESTAMP NOT NULL,
             sent INTEGER DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (tournament_id) REFERENCES tournaments(id)
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
 
@@ -98,23 +96,23 @@ def init_db():
 
 def get_or_create_contact(psid, first_name=None, last_name=None):
     conn = get_db()
-    c = conn.cursor()
-    c.execute("SELECT * FROM contacts WHERE psid = ?", (psid,))
+    c = conn.cursor(cursor_factory=RealDictCursor)
+    c.execute("SELECT * FROM contacts WHERE psid = %s", (psid,))
     contact = c.fetchone()
 
     if contact is None:
         c.execute(
-            "INSERT INTO contacts (psid, first_name, last_name) VALUES (?, ?, ?)",
+            "INSERT INTO contacts (psid, first_name, last_name) VALUES (%s, %s, %s) RETURNING id",
             (psid, first_name, last_name),
         )
+        contact_id = c.fetchone()["id"]
         conn.commit()
-        contact_id = c.lastrowid
         add_tag(contact_id, "nuovo_contatto")
     else:
         contact_id = contact["id"]
         if first_name and not contact["first_name"]:
             c.execute(
-                "UPDATE contacts SET first_name = ?, last_name = ? WHERE id = ?",
+                "UPDATE contacts SET first_name = %s, last_name = %s WHERE id = %s",
                 (first_name, last_name, contact_id),
             )
             conn.commit()
@@ -125,8 +123,8 @@ def get_or_create_contact(psid, first_name=None, last_name=None):
 
 def get_contact_by_psid(psid):
     conn = get_db()
-    c = conn.cursor()
-    c.execute("SELECT * FROM contacts WHERE psid = ?", (psid,))
+    c = conn.cursor(cursor_factory=RealDictCursor)
+    c.execute("SELECT * FROM contacts WHERE psid = %s", (psid,))
     contact = c.fetchone()
     conn.close()
     return contact
@@ -134,9 +132,9 @@ def get_contact_by_psid(psid):
 
 def get_all_contacts():
     conn = get_db()
-    c = conn.cursor()
+    c = conn.cursor(cursor_factory=RealDictCursor)
     c.execute("""
-        SELECT c.*, GROUP_CONCAT(t.tag) as tags
+        SELECT c.*, STRING_AGG(t.tag, ',') as tags
         FROM contacts c
         LEFT JOIN tags t ON c.id = t.contact_id
         GROUP BY c.id
@@ -154,7 +152,7 @@ def add_tag(contact_id, tag):
     c = conn.cursor()
     try:
         c.execute(
-            "INSERT OR IGNORE INTO tags (contact_id, tag) VALUES (?, ?)",
+            "INSERT INTO tags (contact_id, tag) VALUES (%s, %s) ON CONFLICT DO NOTHING",
             (contact_id, tag),
         )
         conn.commit()
@@ -166,7 +164,7 @@ def remove_tag(contact_id, tag):
     conn = get_db()
     c = conn.cursor()
     c.execute(
-        "DELETE FROM tags WHERE contact_id = ? AND tag = ?", (contact_id, tag)
+        "DELETE FROM tags WHERE contact_id = %s AND tag = %s", (contact_id, tag)
     )
     conn.commit()
     conn.close()
@@ -174,11 +172,11 @@ def remove_tag(contact_id, tag):
 
 def get_contacts_by_tag(tag):
     conn = get_db()
-    c = conn.cursor()
+    c = conn.cursor(cursor_factory=RealDictCursor)
     c.execute("""
         SELECT c.* FROM contacts c
         JOIN tags t ON c.id = t.contact_id
-        WHERE t.tag = ?
+        WHERE t.tag = %s
     """, (tag,))
     contacts = c.fetchall()
     conn.close()
@@ -187,8 +185,8 @@ def get_contacts_by_tag(tag):
 
 def get_tags_for_contact(contact_id):
     conn = get_db()
-    c = conn.cursor()
-    c.execute("SELECT tag FROM tags WHERE contact_id = ?", (contact_id,))
+    c = conn.cursor(cursor_factory=RealDictCursor)
+    c.execute("SELECT tag FROM tags WHERE contact_id = %s", (contact_id,))
     tags = [row["tag"] for row in c.fetchall()]
     conn.close()
     return tags
@@ -198,20 +196,20 @@ def get_tags_for_contact(contact_id):
 
 def create_tournament(name, date, time, buyin, reentry, guaranteed, blinds, description, keyword):
     conn = get_db()
-    c = conn.cursor()
+    c = conn.cursor(cursor_factory=RealDictCursor)
     c.execute("""
         INSERT INTO tournaments (name, date, time, buyin, reentry, guaranteed, blinds, description, keyword)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
     """, (name, date, time, buyin, reentry, guaranteed, blinds, description, keyword.upper()))
+    tournament_id = c.fetchone()["id"]
     conn.commit()
-    tournament_id = c.lastrowid
     conn.close()
     return tournament_id
 
 
 def get_active_tournaments():
     conn = get_db()
-    c = conn.cursor()
+    c = conn.cursor(cursor_factory=RealDictCursor)
     c.execute("SELECT * FROM tournaments WHERE active = 1 ORDER BY date ASC")
     tournaments = c.fetchall()
     conn.close()
@@ -220,8 +218,8 @@ def get_active_tournaments():
 
 def get_tournament_by_id(tournament_id):
     conn = get_db()
-    c = conn.cursor()
-    c.execute("SELECT * FROM tournaments WHERE id = ?", (tournament_id,))
+    c = conn.cursor(cursor_factory=RealDictCursor)
+    c.execute("SELECT * FROM tournaments WHERE id = %s", (tournament_id,))
     tournament = c.fetchone()
     conn.close()
     return tournament
@@ -231,9 +229,9 @@ def update_tournament(tournament_id, name, date, time, buyin, reentry, guarantee
     conn = get_db()
     c = conn.cursor()
     c.execute("""
-        UPDATE tournaments SET name=?, date=?, time=?, buyin=?, reentry=?,
-        guaranteed=?, blinds=?, description=?, keyword=?
-        WHERE id=?
+        UPDATE tournaments SET name=%s, date=%s, time=%s, buyin=%s, reentry=%s,
+        guaranteed=%s, blinds=%s, description=%s, keyword=%s
+        WHERE id=%s
     """, (name, date, time, buyin, reentry, guaranteed, blinds, description, keyword.upper(), tournament_id))
     conn.commit()
     conn.close()
@@ -242,18 +240,18 @@ def update_tournament(tournament_id, name, date, time, buyin, reentry, guarantee
 def delete_tournament(tournament_id):
     conn = get_db()
     c = conn.cursor()
-    c.execute("DELETE FROM registrations WHERE tournament_id = ?", (tournament_id,))
-    c.execute("DELETE FROM scheduled_messages WHERE tournament_id = ?", (tournament_id,))
-    c.execute("DELETE FROM tournaments WHERE id = ?", (tournament_id,))
+    c.execute("DELETE FROM registrations WHERE tournament_id = %s", (tournament_id,))
+    c.execute("DELETE FROM scheduled_messages WHERE tournament_id = %s", (tournament_id,))
+    c.execute("DELETE FROM tournaments WHERE id = %s", (tournament_id,))
     conn.commit()
     conn.close()
 
 
 def get_tournament_by_keyword(keyword):
     conn = get_db()
-    c = conn.cursor()
+    c = conn.cursor(cursor_factory=RealDictCursor)
     c.execute(
-        "SELECT * FROM tournaments WHERE keyword = ? AND active = 1",
+        "SELECT * FROM tournaments WHERE keyword = %s AND active = 1",
         (keyword.upper(),),
     )
     tournament = c.fetchone()
@@ -268,9 +266,10 @@ def register_contact_to_tournament(contact_id, tournament_id, status="interested
     c = conn.cursor()
     try:
         c.execute("""
-            INSERT OR REPLACE INTO registrations (contact_id, tournament_id, status)
-            VALUES (?, ?, ?)
-        """, (contact_id, tournament_id, status))
+            INSERT INTO registrations (contact_id, tournament_id, status)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (contact_id, tournament_id) DO UPDATE SET status = %s
+        """, (contact_id, tournament_id, status, status))
         conn.commit()
     finally:
         conn.close()
@@ -278,11 +277,11 @@ def register_contact_to_tournament(contact_id, tournament_id, status="interested
 
 def get_tournament_registrations(tournament_id):
     conn = get_db()
-    c = conn.cursor()
+    c = conn.cursor(cursor_factory=RealDictCursor)
     c.execute("""
         SELECT c.*, r.status FROM contacts c
         JOIN registrations r ON c.id = r.contact_id
-        WHERE r.tournament_id = ?
+        WHERE r.tournament_id = %s
     """, (tournament_id,))
     registrations = c.fetchall()
     conn.close()
@@ -295,7 +294,7 @@ def log_message(contact_id, direction, message_text):
     conn = get_db()
     c = conn.cursor()
     c.execute(
-        "INSERT INTO messages_log (contact_id, direction, message_text) VALUES (?, ?, ?)",
+        "INSERT INTO messages_log (contact_id, direction, message_text) VALUES (%s, %s, %s)",
         (contact_id, direction, message_text),
     )
     conn.commit()
@@ -309,7 +308,7 @@ def create_scheduled_message(tournament_id, tag, message_text, send_at):
     c = conn.cursor()
     c.execute("""
         INSERT INTO scheduled_messages (tournament_id, tag, message_text, send_at)
-        VALUES (?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s)
     """, (tournament_id, tag, message_text, send_at))
     conn.commit()
     conn.close()
@@ -317,11 +316,11 @@ def create_scheduled_message(tournament_id, tag, message_text, send_at):
 
 def get_pending_scheduled_messages():
     conn = get_db()
-    c = conn.cursor()
+    c = conn.cursor(cursor_factory=RealDictCursor)
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     c.execute("""
         SELECT * FROM scheduled_messages
-        WHERE sent = 0 AND send_at <= ?
+        WHERE sent = 0 AND send_at <= %s
     """, (now,))
     messages = c.fetchall()
     conn.close()
@@ -331,6 +330,6 @@ def get_pending_scheduled_messages():
 def mark_scheduled_message_sent(message_id):
     conn = get_db()
     c = conn.cursor()
-    c.execute("UPDATE scheduled_messages SET sent = 1 WHERE id = ?", (message_id,))
+    c.execute("UPDATE scheduled_messages SET sent = 1 WHERE id = %s", (message_id,))
     conn.commit()
     conn.close()
