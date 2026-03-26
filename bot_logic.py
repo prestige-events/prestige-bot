@@ -66,6 +66,9 @@ def handle_postback(sender_psid, postback):
     elif payload == "PRIMO_TORNEO":
         handle_first_tournament(sender_psid, contact_id, first_name)
 
+    elif payload == "PROSSIMO_MAIN_EVENT":
+        handle_main_event(sender_psid, contact_id, first_name)
+
     elif payload == "DOVE_SIAMO":
         handle_location(sender_psid, contact_id)
 
@@ -113,7 +116,7 @@ def handle_welcome(sender_psid, contact_id, first_name):
 
     buttons = [
         {"type": "postback", "title": "Prossimi tornei", "payload": "PROSSIMI_TORNEI"},
-        {"type": "postback", "title": "Il mio primo torneo", "payload": "PRIMO_TORNEO"},
+        {"type": "postback", "title": "Prossimo main event", "payload": "PROSSIMO_MAIN_EVENT"},
         {"type": "postback", "title": "Dove siamo", "payload": "DOVE_SIAMO"},
     ]
 
@@ -261,6 +264,49 @@ def handle_first_tournament(sender_psid, contact_id, first_name):
     log_message(contact_id, "outgoing", msg)
 
 
+def handle_main_event(sender_psid, contact_id, first_name):
+    """Show the next main event tournament."""
+    tournaments = get_active_tournaments()
+    main_event = None
+    for t in tournaments:
+        if "main event" in t["name"].lower():
+            main_event = t
+            break
+
+    if not main_event:
+        msg = (
+            f"{first_name}, al momento non c'è un Main Event in programma.\n"
+            "Vuoi essere avvisato quando ne pubblichiamo uno?"
+        )
+        buttons = [
+            {"type": "postback", "title": "Si, avvisami", "payload": "NOTIFICA_TUTTI"},
+            {"type": "postback", "title": "Prossimi tornei", "payload": "PROSSIMI_TORNEI"},
+        ]
+        send_buttons(sender_psid, msg, buttons)
+    else:
+        text = (
+            f"Ciao {first_name}!\n\n"
+            f"Ecco il prossimo Main Event:\n\n"
+            f"🏆 {main_event['name']}\n"
+            f"📅 {main_event['date']} alle {main_event['time']}\n"
+            f"💰 Buy-in: {main_event['buyin']}"
+        )
+        if main_event["guaranteed"]:
+            text += f"\n👥 Garantito: {main_event['guaranteed']}"
+        if main_event["blinds"]:
+            text += f"\n⏱ Blinds: {main_event['blinds']} minuti"
+        text += "\n📍 Prestige Events — Prato"
+
+        buttons = [
+            {"type": "postback", "title": "Mi iscrivo", "payload": f"ISCRIVI_{main_event['id']}"},
+            {"type": "postback", "title": "Ho una domanda", "payload": "DOMANDA"},
+            {"type": "postback", "title": "Ci penso", "payload": f"INDECISO_{main_event['id']}"},
+        ]
+        send_buttons(sender_psid, text, buttons)
+
+    log_message(contact_id, "outgoing", "Info main event inviata")
+
+
 def handle_location(sender_psid, contact_id):
     """Send location info."""
     msg = (
@@ -281,7 +327,7 @@ def handle_default(sender_psid, first_name):
     )
     buttons = [
         {"type": "postback", "title": "Prossimi tornei", "payload": "PROSSIMI_TORNEI"},
-        {"type": "postback", "title": "Il mio primo torneo", "payload": "PRIMO_TORNEO"},
+        {"type": "postback", "title": "Prossimo main event", "payload": "PROSSIMO_MAIN_EVENT"},
         {"type": "postback", "title": "Dove siamo", "payload": "DOVE_SIAMO"},
     ]
     send_buttons(sender_psid, text, buttons)
