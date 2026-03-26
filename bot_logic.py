@@ -38,8 +38,8 @@ def handle_message(sender_psid, message):
         msg = (
             f"Ciao {first_name}!\n\n"
             "Per qualsiasi informazione puoi contattarci:\n\n"
-            "📞 393 989 7539\n"
-            "📱 WhatsApp: wa.me/393939897539\n\n"
+            "📞 393 989 7538\n"
+            "📱 WhatsApp: wa.me/393939897538\n\n"
             "Ti rispondiamo il prima possibile!"
         )
         send_message(sender_psid, msg)
