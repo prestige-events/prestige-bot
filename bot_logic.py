@@ -324,9 +324,9 @@ def handle_location(sender_psid, contact_id):
     """Send location info."""
     msg = (
         "📍 Prestige Events\n"
-        "Provincia di Prato, Toscana\n\n"
-        "Per indicazioni e orari, scrivici qui in chat "
-        "o chiamaci al numero della room."
+        "Via Niccolò Copernico 4, Prato\n\n"
+        "📞 393 989 7538\n"
+        "📱 WhatsApp: wa.me/393939897538"
     )
     send_message(sender_psid, msg)
     log_message(contact_id, "outgoing", msg)
